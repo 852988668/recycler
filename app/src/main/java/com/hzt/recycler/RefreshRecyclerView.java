@@ -28,18 +28,11 @@ public class RefreshRecyclerView extends RecyclerView {
     private int footerHeight = -1;
     LinearLayoutManager layoutManager;
 
-    // -- footer view
-    private CustomDragFooterView mFooterView;
-    private boolean mEnablePullLoad;
-    private boolean mPullLoading;
-    private boolean isBottom;
-    private boolean mIsFooterReady = false;
-    private LoadMoreListener loadMoreListener;
 
     // -- header view
     private CustomDragHeaderView mHeaderView;
-    private boolean mEnablePullRefresh = true;
-    private boolean mIsRefreshing;
+    private boolean mEnablePullRefresh = true;  //是否能下拉刷新
+    private boolean mIsRefreshing;          //是否刷新中
     private boolean isHeader;
     private boolean mIsHeaderReady = false;
     private Timer timer;
@@ -49,7 +42,16 @@ public class RefreshRecyclerView extends RecyclerView {
     private RefreshRecyclerViewAdapter adapter;
     private int maxPullHeight = 50;//最多下拉高度的px值
 
-    private static final int HEADER_HEIGHT = 68;//头部高度68dp
+    // -- footer view
+    private CustomDragFooterView mFooterView;
+    private boolean mEnablePullLoad;
+    private boolean mPullLoading;
+    private boolean isBottom;
+    private boolean mIsFooterReady = false;
+    private LoadMoreListener loadMoreListener;
+
+
+    private static final int HEADER_HEIGHT = 45;//头部高度68dp
     private static final int MAX_PULL_LENGTH = 150;//最多下拉150dp
     private OnClickListener footerClickListener;
 
@@ -73,6 +75,56 @@ public class RefreshRecyclerView extends RecyclerView {
         super.setAdapter(adapter);
         this.adapter = adapter;
     }
+
+    public void initView(Context context) {
+        layoutManager = new LinearLayoutManager(context);//自带layoutManager，请勿设置
+        layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
+        WindowManager wm = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
+        int height = wm.getDefaultDisplay().getHeight();
+        layoutManager.offsetChildrenVertical(height * 2);//预加载2/3的卡片
+        this.setLayoutManager(layoutManager);
+        maxPullHeight = dp2px(getContext().getResources().getDisplayMetrics().density, MAX_PULL_LENGTH);//最多下拉150dp
+        this.footerClickListener = new footerViewClickListener();
+        this.addOnScrollListener(new RecyclerView.OnScrollListener() {
+
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                switch (newState) {
+                    case RecyclerView.SCROLL_STATE_IDLE:
+                        if (isBottom) resetFooterHeight();
+                        break;
+                    case RecyclerView.SCROLL_STATE_DRAGGING:
+                        break;
+                    case RecyclerView.SCROLL_STATE_SETTLING:
+                        break;
+                }
+
+            }
+
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                int lastItemPosition = layoutManager.findLastVisibleItemPosition();
+                if (lastItemPosition == layoutManager.getItemCount() - 1 && mEnablePullLoad) {//如果到了最后一个
+                    isBottom = true;
+                    mFooterView = (CustomDragFooterView) layoutManager.findViewByPosition(layoutManager.findLastVisibleItemPosition());//一开始还不能hide，因为hide得到最后一个可见的就不是footerview了
+                    if (mFooterView != null) mFooterView.setOnClickListener(footerClickListener);
+                    if (footerHeight == -1 && mFooterView != null) {
+                        mFooterView.show();
+                        mFooterView.setState(CustomDragFooterView.STATE_NORMAL);
+                        footerHeight = mFooterView.getMeasuredHeight();//这里的测量一般不会出问题
+                    }
+                    updateFooterHeight(dy);
+                } else if (lastItemPosition == layoutManager.getItemCount() - 1 && mEnablePullLoad) {//如果到了倒数第二个
+                    startLoadMore();//开始加载更多
+                } else {
+                    isBottom = false;
+                }
+            }
+        });
+    }
+
 
     public boolean ismPullLoading() {
         return mPullLoading;
@@ -129,54 +181,6 @@ public class RefreshRecyclerView extends RecyclerView {
         this.loadMoreListener = listener;
     }
 
-    public void initView(Context context) {
-        layoutManager = new LinearLayoutManager(context);//自带layoutManager，请勿设置
-        layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
-        WindowManager wm = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
-        int height = wm.getDefaultDisplay().getHeight();
-        layoutManager.offsetChildrenVertical(height * 2);//预加载2/3的卡片
-        this.setLayoutManager(layoutManager);
-        maxPullHeight = dp2px(getContext().getResources().getDisplayMetrics().density, MAX_PULL_LENGTH);//最多下拉150dp
-        this.footerClickListener = new footerViewClickListener();
-        this.addOnScrollListener(new RecyclerView.OnScrollListener() {
-
-            @Override
-            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
-                super.onScrollStateChanged(recyclerView, newState);
-                switch (newState) {
-                    case RecyclerView.SCROLL_STATE_IDLE:
-                        if (isBottom) resetFooterHeight();
-                        break;
-                    case RecyclerView.SCROLL_STATE_DRAGGING:
-                        break;
-                    case RecyclerView.SCROLL_STATE_SETTLING:
-                        break;
-                }
-
-            }
-
-            @Override
-            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-                int lastItemPosition = layoutManager.findLastVisibleItemPosition();
-                if (lastItemPosition == layoutManager.getItemCount() - 1 && mEnablePullLoad) {//如果到了最后一个
-                    isBottom = true;
-                    mFooterView = (CustomDragFooterView) layoutManager.findViewByPosition(layoutManager.findLastVisibleItemPosition());//一开始还不能hide，因为hide得到最后一个可见的就不是footerview了
-                    if (mFooterView != null) mFooterView.setOnClickListener(footerClickListener);
-                    if (footerHeight == -1 && mFooterView != null) {
-                        mFooterView.show();
-                        mFooterView.setState(CustomDragFooterView.STATE_NORMAL);
-                        footerHeight = mFooterView.getMeasuredHeight();//这里的测量一般不会出问题
-                    }
-                    updateFooterHeight(dy);
-                } else if (lastItemPosition == layoutManager.getItemCount() - 1 && mEnablePullLoad) {//如果到了倒数第二个
-                    startLoadMore();//开始加载更多
-                } else {
-                    isBottom = false;
-                }
-            }
-        });
-    }
 
     /**
      * 设置是否开启上拉加载更多的功能
@@ -489,10 +493,10 @@ public class RefreshRecyclerView extends RecyclerView {
      * 适用于本recycler的头部下拉刷新view
      */
     public static class CustomDragHeaderView extends LinearLayout {
-        public final static int STATE_NORMAL = 0;
-        public final static int STATE_READY = 1;
-        public final static int STATE_REFRESHING = 2;
-        public final static int STATE_FINISH = 3;
+        public final static int STATE_NORMAL = 0;//一般状态
+        public final static int STATE_READY = 1;//准备刷新
+        public final static int STATE_REFRESHING = 2;//刷新中
+        public final static int STATE_FINISH = 3;//结束刷新
 
         public float screenDensity;
         private final int ROTATE_ANIM_DURATION = 180;
@@ -520,21 +524,21 @@ public class RefreshRecyclerView extends RecyclerView {
             if (state == mState)
                 return;
             switch (state) {
-                case STATE_NORMAL:
+                case STATE_NORMAL://一般状态
                     if (mState == STATE_READY) {
-                        mHintTextView.setText("提示1");
-                    } else if (mState == STATE_REFRESHING) {//如果是从刷新状态过来
-                        mHintTextView.setText("load completed");
+                        mHintTextView.setText("下拉可以刷新");
+                    } else if (mState == STATE_REFRESHING) {//如果是从刷新状态过来，则刷新成功
+                        mHintTextView.setText("刷新成功");
                     }
                     break;
-                case STATE_READY:
-                    mHintTextView.setText("提示2");
+                case STATE_READY://下拉至可以刷新的位置
+                    mHintTextView.setText("松开立刻刷新");
                     break;
-                case STATE_REFRESHING:
-                    mHintTextView.setText("提示3");
+                case STATE_REFRESHING://刷新数据中
+                    mHintTextView.setText("正在刷新数据中...");
                     break;
-                case STATE_FINISH:
-                    mHintTextView.setText("提示4");
+                case STATE_FINISH://刷新完成，清空
+                    mHintTextView.setText("");
                     break;
                 default:
             }
@@ -630,16 +634,16 @@ public class RefreshRecyclerView extends RecyclerView {
         public void setState(int state) {
             if (state == STATE_READY) {
                 mHintView.setVisibility(View.VISIBLE);
-                mHintView.setText("松手加载更多");
+                mHintView.setText("松开立即加载更多");
             } else if (state == STATE_LOADING) {
                 mHintView.setVisibility(INVISIBLE);
+                mHintView.setText("松开立即加载更多");
             } else if (state == STATE_ERROR) {
                 mHintView.setVisibility(VISIBLE);
-                mHintView.setText("提示5");
+                mHintView.setText("加载失败");
             } else {
                 mHintView.setVisibility(View.VISIBLE);
-                mHintView.setText("提示6");
-                mHintView.setText("Load more");
+                mHintView.setText("上拉可以加载更多");
             }
         }
 
@@ -772,7 +776,7 @@ public class RefreshRecyclerView extends RecyclerView {
         @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {//相当于getView
             if (vhItem != null && holder.getClass() == vhItem.getClass()) {
-                initItemView(holder, position, getObject(position));
+                initItemView(holder, position - 1, getObject(position));//pos减去header
             } else if (holder instanceof RefreshRecyclerViewAdapter.VHHeader) {
             } else if (holder instanceof RefreshRecyclerViewAdapter.VHFooter) {
                 if (!loadMore) ((VHFooter) holder).footerView.hide();//第一次初始化显示的时候要不要显示footerView
@@ -817,6 +821,6 @@ public class RefreshRecyclerView extends RecyclerView {
             }
         }
 
-        public abstract void initItemView(ViewHolder itemHolder, int posion, T entity);
+        public abstract void initItemView(ViewHolder itemHolder, int position, T entity);
     }
 }

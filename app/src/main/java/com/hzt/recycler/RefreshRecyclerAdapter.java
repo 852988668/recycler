@@ -7,7 +7,7 @@ import android.widget.TextView;
 import java.util.List;
 
 /**
- * Created by Administrator on 2017/11/9.
+ * 适配器
  */
 
 public class RefreshRecyclerAdapter extends RefreshRecyclerView.RefreshRecyclerViewAdapter<String> {
@@ -24,7 +24,7 @@ public class RefreshRecyclerAdapter extends RefreshRecyclerView.RefreshRecyclerV
     }
 
     @Override
-    public void initItemView(RecyclerView.ViewHolder itemHolder, int posion, String entity) {
+    public void initItemView(RecyclerView.ViewHolder itemHolder, int position, String entity) {
         ((ViewHolder) itemHolder).text.setText(entity);
     }
 

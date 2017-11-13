@@ -39,7 +39,7 @@ public class RefreshRecyclerView extends RecyclerView {
     private float oldY;
     Handler handler = new Handler();
     private OnRefreshListener refreshListener;
-    private RefreshRecyclerViewAdapter adapter;
+    private RefreshAdapter adapter;
     private int maxPullHeight = 50;//最多下拉高度的px值
 
     // -- footer view
@@ -51,7 +51,7 @@ public class RefreshRecyclerView extends RecyclerView {
     private LoadMoreListener loadMoreListener;
 
 
-    private static final int HEADER_HEIGHT = 45;//头部高度68dp
+    private static final int HEADER_HEIGHT = 50;//头部高度50dp
     private static final int MAX_PULL_LENGTH = 150;//最多下拉150dp
     private OnClickListener footerClickListener;
 
@@ -71,7 +71,7 @@ public class RefreshRecyclerView extends RecyclerView {
         initView(context);
     }
 
-    public void setAdapter(RefreshRecyclerViewAdapter adapter) {
+    public void setAdapter(RefreshAdapter adapter) {
         super.setAdapter(adapter);
         this.adapter = adapter;
     }
@@ -682,7 +682,7 @@ public class RefreshRecyclerView extends RecyclerView {
             LayoutParams lp = (LayoutParams) mContentView.getLayoutParams();
             lp.height = 1;//这里如果设为0那么layoutManger就会抓不到
             mContentView.setLayoutParams(lp);
-            mContentView.setBackgroundColor(Color.BLACK);//这里的颜色要和自己的背景色一致
+            mContentView.setBackgroundColor(Color.TRANSPARENT);//这里的颜色要和自己的背景色一致
         }
 
         /**
@@ -693,7 +693,7 @@ public class RefreshRecyclerView extends RecyclerView {
             lp.height = LayoutParams.WRAP_CONTENT;
             lp.width = LayoutParams.MATCH_PARENT;
             mContentView.setLayoutParams(lp);
-            mContentView.setBackgroundColor(Color.WHITE);//这里的颜色要和自己的背景色一致
+            mContentView.setBackgroundColor(Color.TRANSPARENT);//这里的颜色要和自己的背景色一致
         }
 
         private void initView(Context context) {
@@ -713,16 +713,16 @@ public class RefreshRecyclerView extends RecyclerView {
      *
      * @param <T>
      */
-    public static abstract class RefreshRecyclerViewAdapter<T> extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+    public static abstract class RefreshAdapter<T> extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         protected static final int TYPE_HEADER = 436874;
         protected static final int TYPE_ITEM = 256478;
         protected static final int TYPE_FOOTER = 9621147;
 
+        protected Context mContext;
         private int ITEM;
 
         private ViewHolder vhItem;
         protected boolean loadMore;
-
 
         private List<T> dataList;
 
@@ -730,14 +730,15 @@ public class RefreshRecyclerView extends RecyclerView {
             return dataList;
         }
 
-        public void setDataList(List<T> dataList) {
-            this.dataList = dataList;
-        }
-
-        public RefreshRecyclerViewAdapter(List<T> dataList, int itemLayout, boolean pullEnable) {
-            this.dataList = dataList;
+        public RefreshAdapter(Context mContext, int itemLayout, boolean pullEnable) {
+            this.mContext = mContext;
             this.ITEM = itemLayout;
             this.loadMore = pullEnable;
+        }
+
+        public void setDataList(List<T> dataList) {
+            this.dataList = dataList;
+            notifyDataSetChanged();
         }
 
         public abstract ViewHolder setItemViewHolder(View itemView);
@@ -776,9 +777,9 @@ public class RefreshRecyclerView extends RecyclerView {
         @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {//相当于getView
             if (vhItem != null && holder.getClass() == vhItem.getClass()) {
-                initItemView(holder, position - 1, getObject(position));//pos减去header
-            } else if (holder instanceof RefreshRecyclerViewAdapter.VHHeader) {
-            } else if (holder instanceof RefreshRecyclerViewAdapter.VHFooter) {
+                initItemView(holder, position - 1, getObject(position));
+            } else if (holder instanceof RefreshAdapter.VHHeader) {
+            } else if (holder instanceof RefreshAdapter.VHFooter) {
                 if (!loadMore) ((VHFooter) holder).footerView.hide();//第一次初始化显示的时候要不要显示footerView
             }
         }
@@ -821,6 +822,6 @@ public class RefreshRecyclerView extends RecyclerView {
             }
         }
 
-        public abstract void initItemView(ViewHolder itemHolder, int position, T entity);
+        public abstract void initItemView(ViewHolder itemHolder, int postion, T entity);
     }
 }

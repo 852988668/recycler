@@ -135,6 +135,8 @@ public class RefreshRecyclerView extends RecyclerView {
     }
 
     private void updateFooterHeight(float delta) {
+        if (!mEnablePullLoad)
+            return;
         if (mFooterView == null) return;
         int bottomMargin = mFooterView.getBottomMargin();
         if (delta > 50) delta = delta / 6;
@@ -251,6 +253,8 @@ public class RefreshRecyclerView extends RecyclerView {
 
 
     private void updateHeaderHeight(float delta) {
+        if (!mEnablePullRefresh)//没有下拉刷新则不显示
+            return;
         mHeaderView = (CustomDragHeaderView) layoutManager.findViewByPosition(0);
         if (delta > 0) {//如果是往下拉
             int topMargin = mHeaderView.getTopMargin();
@@ -335,6 +339,8 @@ public class RefreshRecyclerView extends RecyclerView {
      * 在用户松手的时候让头部自动收缩回去
      */
     private void resetHeaderHeight() {
+        if (!mEnablePullRefresh)//没有下拉刷新则不显示
+            return;
         if (mHeaderView == null)
             mHeaderView = (CustomDragHeaderView) layoutManager.findViewByPosition(0);
         if (layoutManager.findFirstVisibleItemPosition() != 0) {//如果刷新完毕的时候用户没有注视header
@@ -441,6 +447,7 @@ public class RefreshRecyclerView extends RecyclerView {
         if (mHeaderView == null) return;
         if (!mEnablePullRefresh) {
             mHeaderView.setOnClickListener(null);
+            mHeaderView.setVisibility(GONE);
         } else {
             mHeaderView.setState(CustomDragHeaderView.STATE_NORMAL);
             mHeaderView.setVisibility(VISIBLE);
